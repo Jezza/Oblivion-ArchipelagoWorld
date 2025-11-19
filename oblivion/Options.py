@@ -252,17 +252,24 @@ class FreeOfferings(DefaultOnToggle):
 
 class FastTravelItem(Toggle):
     """
-    When true: Fast travel is disabled until you find the Fast Travel item.
+    Locks the fast travel system behind an Archipelago item.
+    
+    When true: You cannot use fast travel until you receive the "Fast Travel" item from the multiworld.
+    When false: Fast travel is available from the start (vanilla behavior).
+    
+    Note: This affects ALL fast travel, not just dungeon markers. See "Dungeon Marker Mode" for dungeon-specific settings.
     """
     display_name = "Fast Travel Item"
     default = 0
 
 class DungeonMarkerMode(Choice):
     """
-    Controls how dungeon map markers are revealed and whether fast travel to them is enabled.
+    Controls how dungeon map markers appear on your map.
 
-    Reveal and Fast Travel (default): All selected dungeon markers are revealed and fast travel is allowed.
-    Reveal Only: All selected dungeon markers are shown as "rumors" (faded out), and must be ventured to normally.
+    Reveal and Fast Travel: All selected dungeon locations are revealed on the map immediately and can be fast traveled to (if Fast Travel Item allows).
+    Reveal Only: Dungeon locations appear as "rumors" (grayed out markers) - you can see them but must physically travel there first.
+    
+    Note: This setting only affects dungeon map markers, not the overall fast travel system.
     """
     display_name = "Dungeon Marker Mode"
     option_reveal_and_fast_travel = 0
@@ -295,6 +302,20 @@ class FastArena(Toggle):
     display_name = "Fast Arena"
     default = 0
 
+class DungeonWarp(Choice):
+    """
+    Automatically warp the player out to the overworld when completing a seeded dungeon.
+    
+    Off: No warp (vanilla behavior)
+    On: All dungeons that provide a check offer a warp-out option upon completion
+    Item: Warp functionality unlocked when you receive the "Dungeon Warp" item from the multiworld
+    """
+    display_name = "Dungeon Warp"
+    option_off = 0
+    option_on = 1
+    option_item = 2
+    default = 2
+
 @dataclass
 class OblivionOptions(PerGameCommonOptions):
     # Goal Settings
@@ -322,4 +343,5 @@ class OblivionOptions(PerGameCommonOptions):
     dungeon_marker_mode: DungeonMarkerMode
     shop_scout_type: ShopScoutType
     fast_arena: FastArena
+    dungeon_warp: DungeonWarp
     # useful_items_percentage: UsefulItemsPercentage

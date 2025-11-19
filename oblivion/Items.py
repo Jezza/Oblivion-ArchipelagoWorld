@@ -262,6 +262,12 @@ item_table[fast_travel_item_name] = ItemData(current_id, ItemClassification.usef
 useful_items.append(fast_travel_item_name)
 current_id += 1
 
+# Add Dungeon Warp item
+dungeon_warp_item_name = "Dungeon Warp"
+item_table[dungeon_warp_item_name] = ItemData(current_id, ItemClassification.useful)
+useful_items.append(dungeon_warp_item_name)
+current_id += 1
+
 # Add Horse item
 horse_item_name = "Horse"
 item_table[horse_item_name] = ItemData(current_id, ItemClassification.useful)

@@ -748,6 +748,179 @@ class OblivionTracker:
                     self.ctx.tab_items.content.data.append({"text": f"{item_name}"})
         
         self.refresh_locations()
+        self.update_goal_progress()
+    
+    def update_goal_progress(self):
+        """Update the Goal Progress tab based on the current goal."""
+        if not hasattr(self.ctx, 'tab_goal'):
+            return
+        
+        slot_data = getattr(self.ctx, 'slot_data', {}) or {}
+        goal_key = slot_data.get("goal")
+        
+        if not goal_key:
+            self.ctx.tab_goal.content.data = [{"text": "No goal data available."}]
+            return
+        
+        out_rows = []
+        
+        goal_display = goal_key.replace('_', ' ').title()
+        out_rows.append({"text": f"[b]Goal: {goal_display}[/b]"})
+        out_rows.append({"text": ""})
+        
+        if goal_key == "gatecloser":
+            # Gate Closer: Show gate keys collected
+            gate_count = slot_data.get("gate_count_required", 5)
+            gate_keys_collected = self.items.get("Oblivion Gate Key", 0)
+            
+            out_rows.append({"text": f"[b]Gate Keys:[/b] {gate_keys_collected}/{gate_count}"})
+            out_rows.append({"text": ""})
+            
+            for i in range(1, gate_count + 1):
+                if i <= gate_keys_collected:
+                    out_rows.append({"text": f"[color=00ff00]Gate Key {i}[/color]"})
+                else:
+                    out_rows.append({"text": f"Gate Key {i}"})
+            
+            # Check if goal is accessible (have enough keys to close required gates)
+            out_rows.append({"text": ""})
+            if gate_keys_collected >= gate_count:
+                out_rows.append({"text": "[color=00ff00][GO MODE - Close your gates to win!][/color]"})
+        
+        elif goal_key == "shrine_seeker":
+            # Shrine Seeker: Show shrine tokens collected vs needed
+            shrine_goal = slot_data.get("shrine_goal", 5)
+            shrine_count = slot_data.get("shrine_count", 10)
+            
+            # Count total shrine tokens collected
+            total_tokens = sum(count for item_name, count in self.items.items() 
+                             if "Shrine Token" in item_name)
+            
+            out_rows.append({"text": f"[b]Shrine Quests Complete:[/b] {total_tokens}/{shrine_goal}"})
+            out_rows.append({"text": f"(Any {shrine_goal} of {shrine_count} available shrines)"})
+            out_rows.append({"text": ""})
+            
+            if total_tokens >= shrine_goal:
+                out_rows.append({"text": "[color=00ff00]Goal Complete![/color]"})
+                out_rows.append({"text": ""})
+                out_rows.append({"text": "[color=00ff00][GO MODE - Victory achieved!][/color]"})
+            else:
+                out_rows.append({"text": f"Need {shrine_goal - total_tokens} more shrine token(s)"})
+        
+        elif goal_key == "arena":
+            # Arena: Show Progressive Arena Rank progress
+            arena_rank_count = self.items.get("Progressive Arena Rank", 0)
+            ranks = ["Pit Dog", "Brawler", "Bloodletter", "Myrmidon", "Warrior", "Gladiator", "Hero", "Grand Champion"]
+            
+            out_rows.append({"text": f"[b]Arena Ranks:[/b] {arena_rank_count}/{len(ranks)}"})
+            out_rows.append({"text": ""})
+            
+            for i, rank in enumerate(ranks):
+                if i < arena_rank_count:
+                    out_rows.append({"text": f"[color=00ff00]{rank}[/color]"})
+                else:
+                    out_rows.append({"text": f"{rank}"})
+            
+            # Check if goal is accessible (all 7 ranks collected)
+            out_rows.append({"text": ""})
+            if arena_rank_count >= 7:
+                out_rows.append({"text": "[color=00ff00][GO MODE - Complete Arena to become Grand Champion!][/color]"})
+        
+        elif goal_key == "light_the_dragonfires":
+            # Required items for victory (items needed to reach Paradise and complete MQ)
+            required_for_victory = [
+                "Amulet of Kings",
+                "Kvatch Gate Key",
+                "Dagon Shrine Passphrase",
+                "Decoded Page of the Xarxes: Daedric",
+                "Decoded Page of the Xarxes: Divine",
+                "Decoded Page of the Xarxes: Ayleid",
+                "Decoded Page of the Xarxes: Sigillum",
+                "Paradise Access",
+            ]
+            
+            # Optional items
+            optional_mq_items = [
+                "Encrypted Scroll of the Blades",
+                "Fort Sutch Gate Key",
+                "Blades' Report: Strangers at Dusk",
+                "Bruma Gate Key",
+            ]
+            
+            # Required items section
+            out_rows.append({"text": "[b]Required for Victory:[/b]"})
+            required_collected = 0
+            for item_name in required_for_victory:
+                has_item = self.items.get(item_name, 0) > 0
+                if has_item:
+                    out_rows.append({"text": f"[color=00ff00]{item_name}[/color]"})
+                    required_collected += 1
+                else:
+                    out_rows.append({"text": f"{item_name}"})
+            
+            # Optional progression items section
+            out_rows.append({"text": ""})
+            out_rows.append({"text": "[b]Optional Progression Items:[/b]"})
+            for item_name in optional_mq_items:
+                has_item = self.items.get(item_name, 0) > 0
+                if has_item:
+                    out_rows.append({"text": f"[color=00ff00]{item_name}[/color]"})
+                else:
+                    out_rows.append({"text": f"{item_name}"})
+            
+            # Check location completions for victory condition
+            has_weynon_complete = self.is_location_checked("Weynon Priory")
+            has_dagon_complete = self.is_location_checked("Dagon Shrine")
+            
+            # Check if goal is accessible - need all required items + Weynon Priory + Dagon Shrine locations checked
+            if required_collected >= len(required_for_victory) and has_weynon_complete and has_dagon_complete:
+                out_rows.append({"text": ""})
+                out_rows.append({"text": "[color=00ff00][GO MODE - Light the Dragonfires to win!][/color]"})
+        
+        elif goal_key == "dungeon_delver":
+            # Dungeon Delver: Show dungeons completed per region
+            selected_regions = slot_data.get("selected_regions", []) or []
+            dungeons_by_region = slot_data.get("dungeons_by_region", {}) or {}
+            
+            out_rows.append({"text": "[b]Dungeons by Region:[/b]"})
+            out_rows.append({"text": ""})
+            
+            checked_locations = getattr(self.ctx, 'checked_locations', set())
+            regions_unlocked = 0
+            
+            for region in sorted(selected_regions):
+                region_dungeons = dungeons_by_region.get(region, [])
+                completed = 0
+                
+                for dungeon in region_dungeons:
+                    dungeon_data = Locations.location_table.get(dungeon)
+                    if dungeon_data and dungeon_data.id in checked_locations:
+                        completed += 1
+                
+                total = len(region_dungeons)
+                
+                # Check if we have region access
+                access_item = f"{region} Access"
+                starting_unlocked = set(slot_data.get("starting_unlocked_regions", []) or [])
+                has_access = region in starting_unlocked or self.items.get(access_item, 0) > 0
+                
+                if has_access:
+                    regions_unlocked += 1
+                
+                if completed == total and total > 0:
+                    out_rows.append({"text": f"[color=00ff00]{region}: {completed}/{total}[/color]"})
+                else:
+                    out_rows.append({"text": f"{region}: {completed}/{total}"})
+            
+            # Check if goal is accessible
+            if regions_unlocked >= len(selected_regions) and len(selected_regions) > 0:
+                out_rows.append({"text": ""})
+                out_rows.append({"text": "[color=00ff00][GO MODE - All regions unlocked! Clear all dungeons to win!][/color]"})
+        
+        else:
+            out_rows.append({"text": "Unknown goal type."})
+        
+        self.ctx.tab_goal.content.data = out_rows
     
     def has(self, item, player, count=1):
         """Check if player has the specified item with the given count."""
@@ -1071,6 +1244,10 @@ class OblivionContext(CommonContext):
             # Initial shop tier (tier 1) scout scheduling
             if self.tracker:
                 self.tracker.schedule_shop_scout()
+                self.tracker.update_goal_progress()
+            
+            # Display available item groups for hinting
+            self._display_item_groups()
         elif cmd == "ReceivedItems":
             asyncio.create_task(self._send_items_to_oblivion())
             # Update tracker with new items
@@ -1131,6 +1308,7 @@ class OblivionContext(CommonContext):
                 self.tracker.update_locations()
                 self.tracker.update_shop_tab()
                 self.tracker.schedule_shop_scout()
+                self.tracker.update_goal_progress()
             
     def on_print_json(self, args: dict):
         """Handle PrintJSON messages from server, including item transfers."""
@@ -1241,6 +1419,22 @@ class OblivionContext(CommonContext):
                         f.write(f"{transfer_info['direction']}|{transfer_info['item']}|{transfer_info['other_player']}\n")
         except Exception as e:
             logger.error(f"Error writing transfer log: {e}")
+    
+    def _display_item_groups(self):
+        """Display available item groups for hinting on client startup."""
+        try:
+            from worlds.oblivion.Items import item_name_groups
+            
+            logger.info("==========================================")
+            logger.info("Available Item Groups for Hinting:")
+            
+            for group_name in sorted(item_name_groups.keys()):
+                logger.info(f"  - {group_name}")
+
+            logger.info("Use '!hint <group name>' to get hints")
+            logger.info("==========================================")
+        except Exception as e:
+            logger.warning(f"Could not load item groups: {e}")
             
     async def _setup_after_connection(self):
         """Complete setup after successful connection to slot."""
@@ -1489,6 +1683,10 @@ class OblivionContext(CommonContext):
                 # Write fast travel item setting
                 fast_travel_item = self.slot_data.get("fast_travel_item", False)
                 f.write(f"fast_travel_item={'true' if bool(fast_travel_item) else 'false'}\n")
+                
+                # Write dungeon warp setting
+                dungeon_warp = self.slot_data.get("dungeon_warp", "off")
+                f.write(f"dungeon_warp={dungeon_warp}\n")
 
                 # Write selected regions and per-region dungeon lists for the mod
                 selected_regions = self.slot_data.get("selected_regions", []) or []
@@ -1954,6 +2152,7 @@ class OblivionContext(CommonContext):
             def build(self):
                 ret = super().build()
                 self.ctx.tab_items = self.add_client_tab("Items", UILog())
+                self.ctx.tab_goal = self.add_client_tab("Goal Progress", UILog())
                 self.ctx.tab_locations = self.add_client_tab("Tracker", UILog())
                 self.ctx.tab_shop = self.add_client_tab("Shop", UILog())
                 # delayed initialization to ensure data populates
@@ -1967,6 +2166,7 @@ class OblivionContext(CommonContext):
                                 tracker.ensure_shop_initialized()
                                 tracker.update_shop_tab()
                                 tracker.schedule_shop_scout()
+                                tracker.update_goal_progress()
                     _a.get_event_loop().create_task(_after())
                 except Exception:
                     pass

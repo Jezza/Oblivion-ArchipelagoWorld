@@ -32,7 +32,9 @@ description: Default Oblivion Remastered Template
 
 game: Oblivion Remastered
 requires:
-  version: 0.6.3 # Version of Archipelago required for this yaml to work as expected.
+  version: 0.6.4 # Version of Archipelago required for this yaml to work as expected.
+  game:
+    Oblivion Remastered: 0.4.5 # Version of the world required for this yaml to work as expected.
 
 Oblivion Remastered:
   ################
@@ -297,15 +299,22 @@ Oblivion Remastered:
     'true': 50
 
   fast_travel_item:
-    # When true: Fast travel is disabled until you find the Fast Travel item.
+    # Locks the fast travel system behind an Archipelago item.
+    # 
+    # When true: You cannot use fast travel until you receive the "Fast Travel" item from the multiworld.
+    # When false: Fast travel is available from the start (vanilla behavior).
+    # 
+    # Note: This affects ALL fast travel, not just dungeon markers. See "Dungeon Marker Mode" for dungeon-specific settings.
     'false': 50
     'true': 0
 
   dungeon_marker_mode:
-    # Controls how dungeon map markers are revealed and whether fast travel to them is enabled.
+    # Controls how dungeon map markers appear on your map.
     # 
-    # Reveal and Fast Travel (default): All selected dungeon markers are revealed and fast travel is allowed.
-    # Reveal Only: All selected dungeon markers are shown as "rumors" (faded out), and must be ventured to normally.
+    # Reveal and Fast Travel: All selected dungeon locations are revealed on the map immediately and can be fast traveled to (if Fast Travel Item allows).
+    # Reveal Only: Dungeon locations appear as "rumors" (grayed out markers) - you can see them but must physically travel there first.
+    # 
+    # Note: This setting only affects dungeon map markers, not the overall fast travel system.
     reveal_and_fast_travel: 50
     reveal_only: 0
 
@@ -329,6 +338,16 @@ Oblivion Remastered:
     'false': 50
     'true': 0
 
+  dungeon_warp:
+    # Automatically warp the player out to the overworld when completing a seeded dungeon.
+    # 
+    # Off: No warp (vanilla behavior)
+    # On: All dungeons that provide a check offer a warp-out option upon completion
+    # Item: Warp functionality unlocked when you receive the "Dungeon Warp" item from the multiworld
+    'off': 0
+    'on': 0
+    item: 50
+
   ###########################
   # Item & Location Options #
   ###########################
@@ -341,7 +360,7 @@ Oblivion Remastered:
     []
 
   start_inventory:
-    # Start with these items.
+    # Start with the specified amount of these items. Example: "Bomb: 1"
     {}
 
   start_hints:

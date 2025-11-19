@@ -193,6 +193,9 @@ class OblivionWorld(World):
 
         # Handle dungeon marker reveal / fast travel mode
         self.dungeon_marker_mode_setting = self.options.dungeon_marker_mode.current_key
+        
+        # Handle dungeon warp setting
+        self.dungeon_warp_setting = self.options.dungeon_warp.current_key
 
         # Initialize shrine data only if shrines are enabled
         if self.shrines_enabled:
@@ -901,6 +904,15 @@ class OblivionWorld(World):
                 if fast_travel_item_name in filtered_useful_items:
                     filtered_useful_items.remove(fast_travel_item_name)
         
+        # Add Dungeon Warp item if set to "item" mode
+        if self.dungeon_warp_setting == "item":
+            dungeon_warp_item_name = "Dungeon Warp"
+            if dungeon_warp_item_name in item_table:
+                item_pool.append(self.create_item(dungeon_warp_item_name))
+                # Remove from useful items to prevent duplicate placement
+                if dungeon_warp_item_name in filtered_useful_items:
+                    filtered_useful_items.remove(dungeon_warp_item_name)
+        
         # Add Horse item with early placement hint
         horse_item_name = "Horse"
         if horse_item_name in item_table:
@@ -1051,6 +1063,7 @@ class OblivionWorld(World):
             "fast_travel_item": self.fast_travel_item_enabled,
             "fast_arena": self.options.fast_arena.value,
             "dungeon_marker_mode": self.dungeon_marker_mode_setting,
+            "dungeon_warp": self.dungeon_warp_setting,
             "selected_dungeons": getattr(self, 'selected_dungeons', []),
             "selected_regions": getattr(self, 'selected_regions', []),
             "dungeons_by_region": getattr(self, 'selected_dungeons_by_region', {}),
