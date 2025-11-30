@@ -114,7 +114,11 @@ If enabled, selecting a class adds progressive class level items. Each level unl
 ## Technical Details
 
 ### Communication
-File-based communication through `Documents/My Games/Oblivion Remastered/Saved/Archipelago/`
+The Archipelago client and Oblivion Remastered mod communicate through shared files in the game's save directory. The client writes session data and item information to files, which the mod reads to synchronize your game state with the multiworld.
+
+**Windows:** `C:\Users\<username>\Documents\My Games\Oblivion Remastered\Saved\Archipelago\`
+
+**Linux:** The client auto-detects your Proton prefix by searching common Steam library locations (standard, Flatpak, Snap, and custom mount points). The detected path is displayed when you connect. If auto-detection fails, use `/set_save_path` to manually specify the directory.
 
 ### Session Management
 Each Archipelago seed generates a unique session ID, which is used to distinguish separate playthroughs. When the Oblivion client connects, it uses this session ID to create and manage settings and progress tracking for that specific session. 
@@ -129,3 +133,9 @@ Displays current game status including:
 - Available content counts (gates, shrines, arena matches, etc.)
 - Gate key information
 - Configured Goal
+
+### `/set_save_path <path>`
+Manually set the Oblivion save path if auto-detection fails.
+- Example: `/set_save_path ~/.local/share/Steam/steamapps/compatdata/2623190/pfx/drive_c/users/steamuser/Documents/My Games/Oblivion Remastered/Saved`
+- Can end with `/Saved` or `/Saved/Archipelago` - the client will append `/Archipelago` if needed
+- Path is expanded (supports `~` for home directory)

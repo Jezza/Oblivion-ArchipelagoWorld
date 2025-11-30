@@ -1,5 +1,6 @@
 import asyncio
 import os
+import platform
 import time
 from typing import Dict, List, Set
 from CommonClient import CommonContext, server_loop, gui_enabled, ClientCommandProcessor, logger, get_base_parser
@@ -945,7 +946,49 @@ class OblivionTracker:
         return self.items.get(item, 0)
 
 
+def _find_proton_save_path():
+    """Auto-detect Oblivion save path in Proton prefix (Linux)."""
+    import glob
+    
+    # The unique Proton path signature for Oblivion Remastered (2623190 is the Steam App ID)
+    pattern = "compatdata/2623190/pfx/drive_c/users/steamuser/Documents/My Games/Oblivion Remastered/Saved"
+    
+    # Search common Steam library locations
+    home = os.path.expanduser("~")
+    search_roots = [
+        f"{home}/.local/share/Steam/steamapps",           # Standard Steam
+        f"{home}/.var/app/com.valvesoftware.Steam/.local/share/Steam/steamapps",  # Flatpak
+        f"{home}/snap/steam/common/.local/share/Steam/steamapps",  # Snap
+        "/mnt/*/steamapps",
+        "/media/*/steamapps"
+    ]
+    
+    for root in search_roots:
+        full_pattern = f"{root}/{pattern}"
+        matches = glob.glob(full_pattern)
+        if matches:
+            return os.path.join(matches[0], "Archipelago")
+    
+    return None
+
+
 class OblivionClientCommandProcessor(ClientCommandProcessor):
+    def _cmd_set_save_path(self, path: str = ""):
+        """Set Oblivion save path manually."""
+        if not path:
+            self.output("Usage: /set_save_path <path>")
+            return True
+        path = os.path.expanduser(path)
+        if path.endswith("/Saved") or path.endswith("/Saved/"):
+            path = os.path.join(path.rstrip("/"), "Archipelago")
+        try:
+            os.makedirs(path, exist_ok=True)
+            self.ctx.oblivion_save_path = path
+            self.output(f"Path set to: {path}")
+        except Exception as e:
+            self.output(f"Error: {e}")
+        return True
+    
     def _cmd_oblivion(self):
         """Print information about connected Oblivion game."""
         if not isinstance(self.ctx, OblivionContext):
@@ -1023,19 +1066,6 @@ class OblivionClientCommandProcessor(ClientCommandProcessor):
                 # Gate Vision setting
                 gate_vision = self.ctx.slot_data.get("gate_vision", "item")
                 self.output(f"Gate Vision: {gate_vision.title()}")
-    
-    def _cmd_tracker(self):
-        """Toggles the built in logic Tracker."""
-        if hasattr(self.ctx, 'tracker_enabled'):
-            self.ctx.tracker_enabled = not self.ctx.tracker_enabled
-        else:
-            self.ctx.tracker_enabled = True
-        
-        if hasattr(self.ctx, 'tracker'):
-            self.ctx.tracker.update_locations()
-        
-        self.output(f"Tracker {'enabled' if self.ctx.tracker_enabled else 'disabled'}.")
-        return True
 
 
 class OblivionContext(CommonContext):
@@ -1048,10 +1078,20 @@ class OblivionContext(CommonContext):
         super().__init__(server_address, password)
         
         # File system paths
-        self.oblivion_save_path = os.path.join(
-            os.environ.get("USERPROFILE", ""), 
-            "Documents", "My Games", "Oblivion Remastered", "Saved", "Archipelago"
-        )
+        if platform.system() == "Windows":
+            self.oblivion_save_path = os.path.join(
+                os.environ.get("USERPROFILE", ""), 
+                "Documents", "My Games", "Oblivion Remastered", "Saved", "Archipelago"
+            )
+        else:
+            # Linux: Auto-detect Proton prefix
+            detected = _find_proton_save_path()
+            if detected:
+                self.oblivion_save_path = detected
+                self._path_detection_message = f"Auto-detected save path: {detected}"
+            else:
+                self.oblivion_save_path = os.path.join(os.path.expanduser("~"), ".config", "Archipelago", "oblivion")
+                self._path_detection_message = f"Could not auto-detect save path. Using: {self.oblivion_save_path}\nUse /set_save_path <path> if incorrect"
         
         # Completion token mapping: mod token -> location name
         self.completion_tokens = {
@@ -1248,6 +1288,10 @@ class OblivionContext(CommonContext):
             
             # Display available item groups for hinting
             self._display_item_groups()
+            
+            # Display path detection message if Linux
+            if hasattr(self, '_path_detection_message'):
+                logger.info(self._path_detection_message)
         elif cmd == "ReceivedItems":
             asyncio.create_task(self._send_items_to_oblivion())
             # Update tracker with new items
